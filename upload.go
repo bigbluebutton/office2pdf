@@ -152,10 +152,12 @@ func copyFileContents(src, dst string) (err error) {
 }
 
 func SaveFile(w http.ResponseWriter, r *http.Request) (string, error) {
+	fmt.Printf("Saving file \n")
 		reader, err := r.MultipartReader()
 		var outFile string
 
 		if err != nil {
+			fmt.Printf("Cannot get MultipartReader\n")
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return "", err
 		}
@@ -171,7 +173,7 @@ func SaveFile(w http.ResponseWriter, r *http.Request) (string, error) {
 			if part.FileName() == "" {
 				continue
 			}
-
+			fmt.Printf("Saving file " + part.FileName() + "\n")
 			outFile = "tmp/" + part.FileName()
 			dst, err := os.Create("tmp/" + part.FileName())
 			defer dst.Close()
@@ -199,6 +201,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 
 	//POST takes the uploaded file(s) and saves it to disk.
 	case "POST":
+		fmt.Printf("Handling file upload\n")
 		//get the multipart reader for the request.
 /*		reader, err := r.MultipartReader()
 		var outFile, fileName string
