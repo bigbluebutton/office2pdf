@@ -10,7 +10,9 @@ import (
 	"fmt"
 	"strings"
 	"path/filepath"
-//	"bytes"
+	"log"
+	"bytes"
+	"time"
 	//"io/ioutil"
 )
 
@@ -47,6 +49,72 @@ func ConvertOfficeDocToPdf(fileIn string, fileOut string, port int) {
 	}
 }
 
+func checkError(err error) {
+    if err != nil {
+        log.Fatalf("Error: %s", err)
+    }
+}
+
+func execCommand(cmd *exec.Cmd) {
+    // Create stdout, stderr streams of type io.Reader
+    stdout, err := cmd.StdoutPipe()
+    checkError(err)
+    stderr, err := cmd.StderrPipe()
+    checkError(err)
+
+    // Start command
+    err = cmd.Start()
+    checkError(err)
+
+    // Non-blockingly echo command output to terminal
+ //   go io.Copy(os.Stdout, stdout)
+ //   go io.Copy(os.Stderr, stderr)
+
+    outC := make(chan string)
+    // copy the output in a separate goroutine so printing can't block indefinitely
+    go func() {
+        var buf bytes.Buffer
+        io.Copy(&buf, stdout)
+        outC <- buf.String()
+    }()
+
+    outE := make(chan string)
+    go func() {
+        var buf bytes.Buffer
+        io.Copy(&buf, stderr)
+        outE <- buf.String()
+    }()
+
+	done := make(chan error, 1)
+	go func() {
+	    done <- cmd.Wait()
+	}()
+	select {
+	case <-time.After(3 * time.Second):
+	    if err := cmd.Process.Kill(); err != nil {
+	        log.Fatal("failed to kill: ", err)
+	    }
+	    log.Println("process killed as timeout reached")
+	case err := <-done:
+	    if err != nil {
+	        log.Printf("process done with error = %v", err)
+	    } else {
+	        log.Print("process done gracefully without error")
+	    }
+	}
+
+	out := <-outC
+
+    // reading our temp stdout
+    fmt.Println("previous output:")
+    fmt.Print(out)
+
+    outErr := <- outE
+    // reading our temp stdout
+    fmt.Println("previous error:")
+    fmt.Print(outErr)
+}
+
 func ExecuteCommand(app string, args []string) {
 	cmd := exec.Command(app, args...)
 	output, err := cmd.CombinedOutput()
@@ -57,6 +125,11 @@ func ExecuteCommand(app string, args []string) {
 	    fmt.Println(string(output))
 	}
 
+}
+
+func ExecuteCommand2(app string, args []string) {
+	cmd := exec.Command(app, args...)
+	execCommand(cmd)
 }
 
 func WindowsConvertOfficeDocToPdf(fileIn string, fileOut string) {
@@ -202,9 +275,9 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	//POST takes the uploaded file(s) and saves it to disk.
 	case "POST":
 		fmt.Printf("Handling file upload\n")
-		//get the multipart reader for the request.
-/*		reader, err := r.MultipartReader()
-		var outFile, fileName string
+/*		//get the multipart reader for the request.
+		reader, err := r.MultipartReader()
+		var outFile  string
 
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -222,7 +295,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 			if part.FileName() == "" {
 				continue
 			}
-			fileName = part.FileName()
+//			fileName = part.FileName()
 			outFile = "tmp/" + part.FileName()
 			dst, err := os.Create("tmp/" + part.FileName())
 			defer dst.Close()
@@ -238,6 +311,9 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 */
+		// we need to save the file in a separate function so that the file handle is closed.
+		// Otherwise, PPT can't do anything with the file as it will complain that the file
+		// is being used by another process.
 		outFile, err := SaveFile(w, r)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
