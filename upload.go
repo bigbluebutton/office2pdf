@@ -265,6 +265,48 @@ func SaveFile(w http.ResponseWriter, r *http.Request) (string, error) {
 		return outFile, nil
 }
 
+func SaveFile2(w http.ResponseWriter, r *http.Request) (string, error) {
+	fmt.Printf("Saving file \n")
+	//parse the multipart form in the request
+		err := r.ParseMultipartForm(100000)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return "", err
+		}
+
+		//get a ref to the parsed multipart form
+		m := r.MultipartForm
+		var outFile string
+
+		//get the *fileheaders
+		files := m.File["file"]
+		for i, _ := range files {
+			//for each fileheader, get a handle to the actual file
+			file, err := files[i].Open()
+			defer file.Close()
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return "", err
+			}
+			//create destination file making sure the path is writeable.
+			outFile = "tmp/" + files[i].Filename
+			dst, err := os.Create("tmp/" + files[i].Filename)
+			defer dst.Close()
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return "", err
+			}
+			//copy the uploaded file to the destination file
+			if _, err := io.Copy(dst, file); err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return "", err
+			}
+
+		}
+
+		return outFile, nil
+}
+
 //This is where the action happens.
 func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
