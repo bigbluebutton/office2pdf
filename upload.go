@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
-	"strconv"
+	//"strconv"
 	"fmt"
 	"strings"
 	"path/filepath"
@@ -29,8 +29,8 @@ func ConvertOfficeDocToPdf(fileIn string, fileOut string, port int) {
 		"-eSelectPdfVersion=1",
 		"-eReduceImageResolution=true",
 		"-eMaxImageResolution=300",
-		"-p",
-		strconv.Itoa(port),
+		//"-p",
+		//strconv.Itoa(port),
 		"-o",
 		fileOut,
 		fileIn,
@@ -40,6 +40,7 @@ func ConvertOfficeDocToPdf(fileIn string, fileOut string, port int) {
 		fmt.Printf("Cannot find unoconv in PATH")
 	}
 	fmt.Printf("unoconv is available at %s\n", path)
+	/**
 	cmd := exec.Command("unoconv", args...)
 	out, err := cmd.Output()
 	if err != nil {
@@ -47,6 +48,8 @@ func ConvertOfficeDocToPdf(fileIn string, fileOut string, port int) {
 	} else {
 		fmt.Printf("Success: %s\n", out)
 	}
+	*/
+	ExecuteCommand("unoconv", args)
 }
 
 func checkError(err error) {
@@ -365,10 +368,11 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		name := strings.TrimSuffix(outFile, filepath.Ext(outFile))
 //		dupFile := "tmp/copy-" + fileName
 //		CopyFile(outFile, dupFile)
-		//ConvertOfficeDocToPdf(outFile, "tmp/foo.pdf", 8100)
+		
 		pdfFile := name + ".pdf"
 		fmt.Printf("PDF file is " + pdfFile + "\n")
-		WindowsConvertOfficeDocToPdf(outFile, pdfFile)
+		//WindowsConvertOfficeDocToPdf(outFile, pdfFile)
+		ConvertOfficeDocToPdf(outFile, pdfFile, 8100)
 		//WindowsConvertOfficeDocToPdf(outFile, "tmp/foo.pdf")
 		//dat, err := ioutil.ReadFile("tmp/foo.pdf")
 
